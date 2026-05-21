@@ -1,3 +1,7 @@
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Generated datasets
 *_puzzles_*.npy
 *_solutions_*.npy
