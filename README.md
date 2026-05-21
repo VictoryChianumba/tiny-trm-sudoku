@@ -1,12 +1,27 @@
-# Tiny Recursive Model — Sudoku
+# tiny-trm-sudoku
 
-A from-scratch implementation of the **Tiny Recursive Model (TRM)** applied to
-Sudoku of three difficulties (4×4, 6×6, 9×9). The goal is not to set
-state-of-the-art on Sudoku — it's to study, in a setting small enough to fit on
-a laptop GPU, the recipe at the heart of TRM-style models:
+**A resource-constrained reproduction of the Tiny Recursive Model (TRM) on Apple Silicon.**
 
-> *A small network whose forward pass is iterated many times, supervised at
-> every iteration, with a learned halting head.*
+A from-scratch implementation of the TRM recipe applied to Sudoku at three
+difficulties (4×4, 6×6, 9×9), trained on an **8 GB M1 MacBook**. The point is
+not state-of-the-art Sudoku — it's to see how far the TRM recipe gets on a
+laptop, and to document exactly where local hardware stops being enough.
+
+|              |                                                                                   |
+| ------------ | --------------------------------------------------------------------------------- |
+| **Goal**     | Reproduce a small-scale version of the TRM paper on Sudoku, on an Apple M1 (8 GB). |
+| **Finding**  | 4×4 trains cleanly (~92% val); 6×6 trains only with a per-step-backward memory trick and plateaus ~44%; full 9×9 runs out of memory before completing an epoch. |
+| **Contribution** | A constrained reproduction with clear notes on what scales, what fails, and what would need remote GPU compute. |
+
+**Where the details live:** [`docs/reproduction_notes.md`](docs/reproduction_notes.md)
+(what was run, on what) · [`docs/m1_limitations.md`](docs/m1_limitations.md)
+(the 8 GB ceiling) · [`results/9x9_failure_notes.md`](results/9x9_failure_notes.md)
+(why 9×9 OOMs).
+
+![4x4 success](results/small_sudoku_success.png)
+
+> *The TRM recipe in one line: a small network whose forward pass is iterated
+> many times, supervised at every iteration, with a learned halting head.*
 
 Two ideas are doing the heavy lifting:
 
@@ -82,7 +97,14 @@ pip install torch numpy matplotlib pillow
 
 # Re-build the README figures from logs/ + checkpoints
 python3 scripts/build_assets.py
+python3 scripts/build_success_asset.py   # results/small_sudoku_success.png
 ```
+
+Everything here was developed and run on an Apple M1 with 8 GB unified memory,
+using PyTorch's MPS backend (`build.py` picks `mps` automatically when
+available). See [`docs/reproduction_notes.md`](docs/reproduction_notes.md) for
+exact commands and [`docs/m1_limitations.md`](docs/m1_limitations.md) for what
+that hardware does and doesn't allow.
 
 ---
 
@@ -118,7 +140,7 @@ Each run logs to `logs/<experiment_name>/` (see [`logger.py`](logger.py)):
 | -------------------- | ------ | -------------------- | ------ | ----- |
 | `trm_4x4_baseline`   | 354K   | **91.77%** (epoch 37) | 60   | Solid; train and val track together. |
 | `trm_6x6_baseline`   | 3.15M  | **43.6%**             | ~290 | Plateaus well below 4×4 quality. |
-| `trm_9x9_baseline`   | 1.96M  | —                     | —    | Logged config only; no completed history. |
+| `trm_9x9_baseline`   | 1.96M  | —                     | —    | OOM on 8 GB M1; config only. See [`results/9x9_failure_notes.md`](results/9x9_failure_notes.md). |
 
 The 4×4 result is what the recipe is supposed to do: a 354K-parameter network
 generalizes to held-out 4×4 puzzles in tens of epochs. The 6×6 result is the
@@ -210,8 +232,11 @@ train_9x9.py             # 9x9 entry point
 evaluation.py            # per-step / per-position / error-class evaluation
 visualization.py         # grid + step-by-step + animation rendering
 demo.py                  # standalone HTML demo with examples baked in
-scripts/build_assets.py  # rebuild the figures in this README
+scripts/build_assets.py        # rebuild the figures in this README
+scripts/build_success_asset.py # rebuild results/small_sudoku_success.png
 
+docs/                    # reproduction_notes.md, m1_limitations.md (the constraints story)
+results/                 # small_sudoku_success.png, 9x9_failure_notes.md
 logs/                    # one subdir per experiment, JSON + figures + sample animations
 assets/                  # figures referenced from this README
 trm_4x4_sudoku.pt        # 4x4 checkpoint (best EMA weights, val acc 0.9177)
